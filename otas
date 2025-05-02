@@ -1,0 +1,461 @@
+import React, { useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
+
+// Mock Data (Replace with actual API calls)
+const generateMockFinancialData = (years: number) => {
+    const data = [];
+    let revenue = 100;
+    let expenses = 80;
+    let assets = 500;
+    let liabilities = 200;
+    let stockPrice = 50;
+
+    for (let i = 0; i < years; i++) {
+        const year = new Date().getFullYear() - years + i + 1;
+        revenue *= (1 + Math.random() * 0.1); // Simulate growth
+        expenses *= (1 + Math.random() * 0.08);
+        const profit = revenue - expenses;
+        assets *= (1 + Math.random() * 0.05);
+        liabilities *= (1 + Math.random() * 0.07);
+        const equity = assets - liabilities;
+        stockPrice *= (1 + Math.random() * 0.15 - 0.05); // Simulate stock price fluctuation
+        data.push({
+            year: year.toString(),
+            revenue: Math.round(revenue),
+            expenses: Math.round(expenses),
+            profit: Math.round(profit),
+            assets: Math.round(assets),
+            liabilities: Math.round(liabilities),
+            equity: Math.round(equity),
+            stockPrice: parseFloat(stockPrice.toFixed(2)),
+            debtToEquityRatio: parseFloat((liabilities / equity).toFixed(2)),
+            returnOnEquity: parseFloat((profit / equity).toFixed(2)),
+        });
+    }
+    return data;
+};
+
+const mockValuationData = [
+    { method: 'Discounted Cash Flow (DCF)', value: 120.50 },
+    { method: 'Price-to-Earnings Ratio', value: 110.25 },
+    { method: 'Book Value', value: 85.00 },
+];
+
+const mockRatioData = {
+    liquidity: [
+        { name: 'Current Ratio', year: '2022', value: 2.5 },
+        { name: 'Quick Ratio', year: '2022', value: 1.8 },
+        { name: 'Current Ratio', year: '2023', value: 2.7 },
+        { name: 'Quick Ratio', year: '2023', value: 2.0 },
+    ],
+    profitability: [
+        { name: 'Gross Profit Margin', year: '2022', value: 0.5 },
+        { name: 'Net Profit Margin', year: '2022', value: 0.2 },
+        { name: 'Gross Profit Margin', year: '2023', value: 0.55 },
+        { name: 'Net Profit Margin', year: '2023', value: 0.25 },
+    ],
+    leverage: [
+        { name: 'Debt to Equity', year: '2022', value: 0.6 },
+        { name: 'Debt to Equity', year: '2023', value: 0.7 },
+    ],
+    efficiency: [
+        { name: 'Inventory Turnover', year: '2022', value: 8 },
+        { name: 'Asset Turnover', year: '2022', value: 1.2 },
+        { name: 'Inventory Turnover', year: '2023', value: 9 },
+        { name: 'Asset Turnover', year: '2023', value: 1.3 },
+    ],
+};
+
+const financialStatementOptions = [
+    { label: "Income Statement", value: "incomeStatement" },
+    { label: "Balance Sheet", value: "balanceSheet" },
+    { label: "Cash Flow Statement", value: "cashFlowStatement" },
+];
+
+const OTAS = () => {
+    const [years, setYears] = useState<number>(5);
+    const [financialData, setFinancialData] = useState(generateMockFinancialData(years));
+    const [selectedStatement, setSelectedStatement] = useState(financialStatementOptions[0].value);
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+
+    const handleGenerateData = useCallback(() => {
+        setFinancialData(generateMockFinancialData(years));
+    }, [years]);
+
+    const handleYearsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numYears = parseInt(e.target.value, 10);
+        if (!isNaN(numYears) && numYears > 0) {
+            setYears(numYears);
+        }
+    };
+
+    const formatDate = (date: Date | undefined) => {
+        if (!date) {
+            return "No date selected";
+        }
+        return format(date, "PPP");
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-8">
+                <h1 className="text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                    OTAS: Financial Analysis Platform
+                </h1>
+
+                <Card className="bg-white/5 backdrop-blur-md border border-white/10 shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="text-2xl text-white">Financial Data Input</CardTitle>
+                        <CardDescription className="text-gray-300">
+                            Generate sample financial data for analysis.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                            <Input
+                                type="number"
+                                value={years}
+                                onChange={handleYearsChange}
+                                className="w-full sm:w-40 bg-black/20 text-white border-gray-700"
+                                placeholder="Number of Years"
+                                min="1"
+                            />
+                            <Button
+                                onClick={handleGenerateData}
+                                className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 border border-blue-500/30"
+                            >
+                                Generate Data
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Tabs defaultValue="financialStatements" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 bg-white/5 backdrop-blur-md border border-white/10">
+                        <TabsTrigger value="financialStatements" className="text-white data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">Financial Statements</TabsTrigger>
+                        <TabsTrigger value="ratios" className="text-white data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">Financial Ratios</TabsTrigger>
+                        <TabsTrigger value="valuation" className="text-white data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">Valuation</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="financialStatements">
+                        <Card className="bg-white/5 backdrop-blur-md border border-white/10 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-2xl text-white">Financial Statements</CardTitle>
+                                <CardDescription className="text-gray-300">
+                                    View key financial statements.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex flex-col sm:flex-row items-center gap-4">
+                                    <Select onValueChange={setSelectedStatement} value={selectedStatement}>
+                                        <SelectTrigger className="w-full sm:w-[280px] bg-black/20 text-white border-gray-700">
+                                            <SelectValue placeholder="Select a statement" />
+                                        </SelectTrigger>
+                                        <SelectContent className='bg-gray-800 border-gray-700'>
+                                            {financialStatementOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value} className='hover:bg-gray-700/50 text-white'>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full sm:w-[280px] justify-start text-left font-normal bg-black/20 text-white border-gray-700",
+                                                    !selectedDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                                {formatDate(selectedDate)}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={selectedDate}
+                                                onSelect={setSelectedDate}
+                                                initialFocus
+                                                className='rounded-md border-gray-700'
+                                                style={{ backgroundColor: '#374151', color: '#fff' }}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    {selectedStatement === 'incomeStatement' && (
+                                        <Table className="min-w-[600px]">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="text-white">Year</TableHead>
+                                                    <TableHead className="text-white">Revenue</TableHead>
+                                                    <TableHead className="text-white">Expenses</TableHead>
+                                                    <TableHead className="text-white">Profit</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {financialData.map((item, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium text-gray-300">{item.year}</TableCell>
+                                                        <TableCell className="text-green-400">${item.revenue}</TableCell>
+                                                        <TableCell className="text-red-400">${item.expenses}</TableCell>
+                                                        <TableCell className="text-blue-400">${item.profit}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                    {selectedStatement === 'balanceSheet' && (
+                                        <Table className="min-w-[600px]">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="text-white">Year</TableHead>
+                                                    <TableHead className="text-white">Assets</TableHead>
+                                                    <TableHead className="text-white">Liabilities</TableHead>
+                                                    <TableHead className="text-white">Equity</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {financialData.map((item, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium text-gray-300">{item.year}</TableCell>
+                                                        <TableCell className="text-yellow-400">${item.assets}</TableCell>
+                                                        <TableCell className="text-orange-400">${item.liabilities}</TableCell>
+                                                        <TableCell className="text-purple-400">${item.equity}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                    {selectedStatement === 'cashFlowStatement' && (
+                                        <Table className="min-w-[600px]">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="text-white">Year</TableHead>
+                                                    <TableHead className="text-white">Operating Cash Flow</TableHead>
+                                                    <TableHead className="text-white">Investing Cash Flow</TableHead>
+                                                    <TableHead className="text-white">Financing Cash Flow</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {financialData.map((item, index) => {
+                                                    // Generate mock cash flow data
+                                                    const operatingCF = Math.round(item.profit * (0.8 + Math.random() * 0.4));
+                                                    const investingCF = Math.round(-item.assets * (0.1 + Math.random() * 0.2));
+                                                    const financingCF = Math.round(item.liabilities * (0.2 + Math.random() * 0.1));
+
+                                                    return (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium text-gray-300">{item.year}</TableCell>
+                                                            <TableCell className="text-teal-400">${operatingCF}</TableCell>
+                                                            <TableCell className="text-indigo-400">${investingCF}</TableCell>
+                                                            <TableCell className="text-pink-400">${financingCF}</TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="ratios">
+                        <Card className="bg-white/5 backdrop-blur-md border border-white/10 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-2xl text-white">Financial Ratios</CardTitle>
+                                <CardDescription className="text-gray-300">
+                                    Analyze key financial ratios.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Liquidity Ratios</h3>
+                                        {mockRatioData.liquidity.length > 0 ? (
+                                             <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="text-white">Ratio</TableHead>
+                                                        <TableHead className="text-white">Year</TableHead>
+                                                        <TableHead className="text-white">Value</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {mockRatioData.liquidity.map((ratio, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium text-gray-300">{ratio.name}</TableCell>
+                                                            <TableCell className="text-gray-300">{ratio.year}</TableCell>
+                                                            <TableCell className="text-yellow-400">{ratio.value.toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <p className="text-gray-400">No liquidity data available.</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Profitability Ratios</h3>
+                                         {mockRatioData.profitability.length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="text-white">Ratio</TableHead>
+                                                        <TableHead className="text-white">Year</TableHead>
+                                                        <TableHead className="text-white">Value</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {mockRatioData.profitability.map((ratio, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium text-gray-300">{ratio.name}</TableCell>
+                                                            <TableCell className="text-gray-300">{ratio.year}</TableCell>
+                                                            <TableCell className="text-green-400">{(ratio.value * 100).toFixed(2)}%</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <p className="text-gray-400">No profitability data available.</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Leverage Ratios</h3>
+                                         {mockRatioData.leverage.length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="text-white">Ratio</TableHead>
+                                                        <TableHead className="text-white">Year</TableHead>
+                                                        <TableHead className="text-white">Value</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {mockRatioData.leverage.map((ratio, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium text-gray-300">{ratio.name}</TableCell>
+                                                            <TableCell className="text-gray-300">{ratio.year}</TableCell>
+                                                            <TableCell className="text-red-400">{ratio.value.toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <p className="text-gray-400">No leverage data available.</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Efficiency Ratios</h3>
+                                         {mockRatioData.efficiency.length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="text-white">Ratio</TableHead>
+                                                        <TableHead className="text-white">Year</TableHead>
+                                                        <TableHead className="text-white">Value</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {mockRatioData.efficiency.map((ratio, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium text-gray-300">{ratio.name}</TableCell>
+                                                            <TableCell className="text-gray-300">{ratio.year}</TableCell>
+                                                            <TableCell className="text-blue-400">{ratio.value.toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <p className="text-gray-400">No efficiency data available.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="valuation">
+                        <Card className="bg-white/5 backdrop-blur-md border border-white/10 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-2xl text-white">Valuation Analysis</CardTitle>
+                                <CardDescription className="text-gray-300">
+                                    View valuation metrics.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Stock Price Chart</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart
+                                                data={financialData}
+                                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                                <XAxis dataKey="year" stroke="#9ca3af" />
+                                                <YAxis stroke="#9ca3af" tickFormatter={(value: number) => `$${value}`} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#374151', border: '1px solid #4b5563', color: '#fff' }}
+                                                    labelStyle={{ color: '#fff' }}
+                                                    itemStyle={{ color: '#fff' }}
+                                                />
+                                                <Legend wrapperStyle={{ color: '#fff' }} />
+                                                <Line type="monotone" dataKey="stockPrice" stroke="#8884d8" name="Stock Price" />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-white mb-4">Valuation Metrics</h3>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="text-white">Method</TableHead>
+                                                    <TableHead className="text-white">Value</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {mockValuationData.map((item, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium text-gray-300">{item.method}</TableCell>
+                                                        <TableCell className="text-purple-400">${item.value.toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </div>
+        </div>
+    );
+};
+
+export default OTAS;
